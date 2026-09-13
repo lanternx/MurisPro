@@ -3501,17 +3501,14 @@ def get_audit_info():
     """供前端导出PDF时调用，返回当前数据库哈希和审计链，并记录EXPORT审计"""
     try:
         db_id = current_db_id
-        if db_id is None:
-            return jsonify({'error': '未找到当前数据库'}), 500
         
         db_info = SysDbInfo.query.filter_by(name=db_id).first()
         audit_enabled = db_info.audit_enabled if db_info else True
         
         db_hash = compute_db_hash()
-        db_name = current_db_id
         
         if not audit_enabled:
-            return jsonify({'db_hash': db_hash, 'record': '', 'db_name': db_name, 'audit_enabled': False}), 200
+            return jsonify({'db_hash': db_hash, 'record': '', 'db_name': db_id, 'audit_enabled': False}), 200
         
         # 获取最新审计链
         latest = SysAuditLog.query.filter_by(db_id=db_id).order_by(SysAuditLog.id.desc()).first()
@@ -3520,7 +3517,7 @@ def get_audit_info():
         # 记录EXPORT审计条目
         new_record = compute_record_hash(record)
         entry = SysAuditLog(
-            action=f'EXPORT pdf db={db_name}',
+            action=f'EXPORT pdf db={db_id}',
             old_values=db_hash,
             new_values=db_hash,
             record=new_record,
@@ -3529,7 +3526,7 @@ def get_audit_info():
         db.session.add(entry)
         db.session.commit()
         
-        return jsonify({'db_hash': db_hash, 'record': new_record, 'db_name': db_name, 'audit_enabled': True}), 200
+        return jsonify({'db_hash': db_hash, 'record': new_record, 'db_name': db_id, 'audit_enabled': True}), 200
     except Exception as e:
         logger.error(f"获取审计信息失败: {str(e)}")
         return jsonify({'error': f'获取审计信息失败: {str(e)}'}), 500
@@ -3552,7 +3549,7 @@ def verify_pdf():
 
         time_match = _re.search(r'Certified At:\s*(.+)', full_text)
         db_name_match = _re.search(r'DB Name:\s*(.+)', full_text)
-        db_hash_match = _re.search(r'(?:Content Hash|DB Hash):\s*([0-9a-f]{64})', full_text)
+        db_hash_match = _re.search(r'DB Hash:\s*([0-9a-f]{64})', full_text)
         chain_match = _re.search(r'Audit Chain:\s*([0-9a-f]{64})', full_text)
         sig_match = _re.search(r'Server Signature:\s*([A-Za-z0-9+/=\s]+)', full_text)
         sign_material_match = _re.search(r'Signed Material:\s*(.+?)(?:\n|$)', full_text)
@@ -3571,9 +3568,10 @@ def verify_pdf():
         try:
             public_key = ecdsa.VerifyingKey.from_pem(PUBLIC_KEY_PEM)
             sig_bytes = base64.b64decode(signature)
-            public_key.verify(sig_bytes, sign_material.encode(), hashfunc=hashlib.sha256)
+            public_key.verify_digest(sig_bytes, hashlib.sha256(bytes.fromhex(sign_material)).digest())
             signature_valid = True
-        except Exception:
+        except Exception as E:
+            print(f"签名验证失败: {str(E)}")
             signature_valid = False
 
         hash_match = False
@@ -3583,22 +3581,23 @@ def verify_pdf():
         if cert_db_name:
             db_info = SysDbInfo.query.filter_by(name=cert_db_name).first()
             if db_info:
-                from datetime import datetime as dt
+                from datetime import datetime, timezone
                 cert_dt = None
                 try:
-                    cert_dt = dt.fromisoformat(cert_time.replace('Z', '+00:00'))
+                    cert_dt = datetime.fromisoformat(cert_time.replace('Z', '+00:00'))
+                    cert_dt = cert_dt.astimezone(timezone.utc).replace(tzinfo=None)
                 except Exception:
                     pass
 
                 candidates = SysAuditLog.query.filter(
-                    SysAuditLog.db_id == db_info.id,
+                    SysAuditLog.db_id == db_info.name,
                     SysAuditLog.action.like('EXPORT%'),
                 ).all()
                 for c in candidates:
                     if c.timestamp and cert_dt and abs((c.timestamp - cert_dt).total_seconds()) < 30:
                         audit_entry = c
                         break
-
+                
                 if audit_entry:
                     hash_match = audit_entry.old_values == cert_db_hash
                     chain_match_ok = (cert_record and audit_entry.record == cert_record)
