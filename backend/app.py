@@ -1253,7 +1253,7 @@ def update_allele(allele_id):
         db.session.commit()
         log_audit(f'UPDATE Allele SET id={allele_id}', old_hash)
         return jsonify(gene.to_dict())
-    except:
+    except Exception as e:
         logger.error(f"更新基因位点失败: {str(e)}")
         db.session.rollback()
         return jsonify({'error': '获取数据失败'}), 404
@@ -1269,7 +1269,7 @@ def delete_gene(id):
         db.session.commit()
         log_audit(f'DELETE FROM gene_locus WHERE id={id}', old_hash)
         return '', 204
-    except:
+    except Exception as e:
         logger.error(f"删除基因位点失败: {str(e)}")
         db.session.rollback()
         return jsonify({'error': '获取数据失败'}), 404
@@ -1287,10 +1287,10 @@ def delete_allele(id):
         db.session.commit()
         log_audit(f'DELETE FROM allele WHERE id={id}', old_hash)
         return '', 204
-    except:
+    except Exception as e:
         logger.error(f"删除等位基因失败: {str(e)}")
         db.session.rollback()
-        return 404
+        return jsonify({'error': '删除等位基因失败'}), 404
 
 # 位置管理API
 @app.route('/api/locations', methods=['GET'])
@@ -1370,8 +1370,8 @@ def delete_location(id):
         return '', 204
     except Exception as e:
         db.session.rollback()
-        logger.error(f"添加区域失败: {str(e)}")
-        return jsonify({'error': f'添加位置失败: {str(e)}'}), 500
+        logger.error(f"删除区域失败: {str(e)}")
+        return jsonify({'error': f'删除位置失败: {str(e)}'}), 500
 
 # 数据导出API
 @app.route('/api/export/<export_type>', methods=['GET'])
@@ -1687,7 +1687,7 @@ def import_mice_data(df, result, conflict_resolution):
                 mouse.strain = str(row['strain']).strip()
             if 'record' in df.columns and pd.notna(row['record']):
                 if conflict_resolution == 'overwrite':
-                    StatusRecord.query.filter(StatusRecord.mouse_id == mouse.tid & StatusRecord.record_livingdays == -1).delete()
+                    StatusRecord.query.filter((StatusRecord.mouse_id == mouse.tid) & (StatusRecord.record_livingdays == -1)).delete()
                 record = StatusRecord(
                     mouse_id=mouse.tid,
                     record_date=datetime.now().date(),
@@ -3303,7 +3303,7 @@ def analyse_rule(rule):
             return [r.tid for r in Mouse.query.filter(Mouse.strain == value).all()]
     elif rule['Rtype'] == 'cage':
         cages = rule.get('cages')
-        if value:
+        if cages:
             return [r.tid for r in Mouse.query.filter(Mouse.cage_id.in_(cages)).all()]
     elif rule['Rtype'] == 'live_status':
         value = rule.get('value')

@@ -369,7 +369,7 @@ class ExperimentClass(db.Model):
     
     def to_dict(self):
         return {
-            'class_id': self.class_id,
+            'id': self.id,
             'mouse_id': self.mouse_id,
             'experiment_id': self.experiment_id,
             'mouse_info': self.mouse.to_dict() if self.mouse else None

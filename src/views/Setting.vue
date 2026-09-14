@@ -191,7 +191,7 @@
     <p class="section-description">在此设置导出数据的相关选项</p>
     
     <div class="form-section">
-        <h3>数据导出设置</h3>
+        <h3>数据导出</h3>
         <div class="btn-group">
             <button class="btn btn-primary" 
                 v-for="option in exportOptions" 
@@ -1320,8 +1320,8 @@
                     <div class="detail-item">
                         <span class="detail-label">审计模式</span>
                         <div class="checkbox-group">
-                            <input type="checkbox" v-model="editingDatabase.auditEnabled" id="edit-audit-checkbox">
-                            <label for="edit-audit-checkbox">启用审计</label>
+                            <input type="checkbox" v-model="editingDatabase.auditEnabled" id="audit-checkbox">
+                            <label for="audit-checkbox">启用审计</label>
                         </div>
                     </div>
                 </div>
@@ -1430,73 +1430,7 @@
         </div>
     </div>
 
-    <!-- PDF验证 -->
-    <div v-if="activeTab === 'pdfverify'" class="form-container">
-        <h2 class="section-title">PDF时间戳验证</h2>
-        <p class="section-description">上传PDF文件，验证其时间戳签名是否有效</p>
 
-        <div class="form-section">
-            <h3>选择PDF文件</h3>
-            <div class="file-upload-area" @click="triggerPdfUpload" @dragover.prevent @drop.prevent="onPdfDrop">
-                <input type="file" ref="pdfFileInput" accept=".pdf" @change="onPdfFileSelect" style="display: none">
-                <i class="material-icons" style="font-size: 48px; color: #999;">upload_file</i>
-                <p>点击选择或拖拽PDF文件到此处</p>
-                <p v-if="verifyFileName" style="color: #2196F3;">已选择: {{ verifyFileName }}</p>
-            </div>
-            <div class="form-group" style="margin-top: 15px;">
-                <button class="btn btn-primary" @click="verifyPdf" :disabled="!verifyFileData || isVerifying">
-                    <i class="material-icons">verified</i>
-                    {{ isVerifying ? '验证中...' : '开始验证' }}
-                </button>
-            </div>
-        </div>
-
-        <div v-if="verifyResult" class="form-section">
-            <h3>验证结果</h3>
-            <div :class="verifyResult.valid ? 'verify-result-success' : 'verify-result-fail'">
-                <p style="font-size: 18px; font-weight: bold;">
-                    {{ verifyResult.valid ? '✅ 验证通过' : '❌ 验证失败' }}
-                </p>
-                <table class="settings-table" style="margin-top: 10px;">
-                    <tbody>
-                        <tr>
-                            <td style="width: 150px; font-weight: bold;">审计链匹配</td>
-                            <td>{{ verifyResult.chainMatch ? '✅ 是' : '❌ 否' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: bold;">DB哈希匹配</td>
-                            <td>{{ verifyResult.hashMatch ? '✅ 是' : '❌ 否' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: bold;">签名验证</td>
-                            <td>{{ verifyResult.signatureValid ? '✅ 是' : '❌ 否' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: bold;">认证时间</td>
-                            <td>{{ verifyResult.time || '无' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: bold;">数据库名</td>
-                            <td>{{ verifyResult.db_name || '无' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: bold;">认证时DB哈希</td>
-                            <td style="font-size: 12px; word-break: break-all;">{{ verifyResult.cert_db_hash || '无' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight: bold;">审计链</td>
-                            <td style="font-size: 12px; word-break: break-all;">{{ verifyResult.cert_record || '无' }}</td>
-                        </tr>
-                        <tr v-if="verifyResult.error">
-                            <td style="font-weight: bold;">错误信息</td>
-                            <td style="color: red;">{{ verifyResult.error }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    
     <!-- 编辑基因位点对话框 -->
     <div v-if="editLocusDialogVisible" class="dialog-overlay">
     <div class="dialog-container">
@@ -1680,11 +1614,10 @@ const tabs = ref([
 { id: 'location', title: '位置设置' },
 { id: 'experiment', title: '实验类型设置' },
 { id: 'group', title: '预设分组' },
-{ id: 'export', title: '导出设置' },
+{ id: 'export', title: '导出数据' },
 { id: 'import', title: '导入数据' },
 { id: 'database', title: '数据库管理' },
-{ id: 'display', title: '自定义显示设置' },
-{ id: 'pdfverify', title: 'PDF验证' }
+{ id: 'display', title: '自定义显示设置' }
 ])
 
 // 基因型相关状态
@@ -1729,13 +1662,6 @@ skippedCount: 0,
 errors: []
 })
 
-// PDF验证相关状态
-const pdfFileInput = ref(null)
-const verifyFileName = ref('')
-const verifyFileData = ref(null)
-const isVerifying = ref(false)
-const verifyResult = ref(null)
-
 // 实验类型相关状态
 const editingExperimentType = reactive({
 id: null,
@@ -1767,7 +1693,7 @@ const addingDatabase = ref(false)
 
 // 计算属性：检查是否确认删除
 const isDeleteConfirmed = computed(() => {
-  return deleteConfirmation.value === 'DELETE ALL DATA'
+    return deleteConfirmation.value === 'DELETE ALL DATA'
 })
 
 // 监听确认输入框的变化
@@ -2862,61 +2788,6 @@ const confirmReset = () => {
             changeSettings(s)
         })
         toast.success("重置所有显示设置")
-    }
-}
-
-// PDF验证相关函数
-function triggerPdfUpload() {
-    pdfFileInput.value.click()
-}
-
-function onPdfFileSelect(event) {
-    const file = event.target.files[0]
-    if (file) loadPdfFile(file)
-}
-
-function onPdfDrop(event) {
-    const file = event.dataTransfer.files[0]
-    if (file && file.type === 'application/pdf') loadPdfFile(file)
-}
-
-function loadPdfFile(file) {
-    verifyFileName.value = file.name
-    verifyResult.value = null
-    const reader = new FileReader()
-    reader.onload = (e) => {
-        verifyFileData.value = new Uint8Array(e.target.result)
-    }
-    reader.readAsArrayBuffer(file)
-}
-
-async function verifyPdf() {
-    if (!verifyFileData.value) {
-        toast.warning('请先选择PDF文件')
-        return
-    }
-    
-    isVerifying.value = true
-    verifyResult.value = null
-    
-    try {
-        const response = await axios.post('/api/verify-pdf', verifyFileData.value, {
-            headers: { 'Content-Type': 'application/pdf' }
-        })
-        verifyResult.value = response.data
-        
-        if (response.data.valid) {
-            toast.success('PDF验证通过')
-        } else {
-            toast.error('PDF验证失败')
-        }
-    } catch (error) {
-        console.error('PDF验证错误:', error)
-        const msg = error.response?.data?.error || error.message
-        verifyResult.value = { valid: false, hashMatch: false, chainMatch: false, error: msg }
-        toast.error('PDF验证出错: ' + msg)
-    } finally {
-        isVerifying.value = false
     }
 }
 
@@ -4081,34 +3952,6 @@ margin-bottom: 1rem;
     font-weight: 600;
 }
 
-/* PDF验证样式 */
-.file-upload-area {
-    border: 2px dashed #ccc;
-    border-radius: 8px;
-    padding: 30px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.3s, background-color 0.3s;
-}
-
-.file-upload-area:hover {
-    border-color: #2196F3;
-    background-color: #f0f7ff;
-}
-
-.verify-result-success {
-    background-color: #e8f5e9;
-    border: 1px solid #4caf50;
-    border-radius: 8px;
-    padding: 15px;
-}
-
-.verify-result-fail {
-    background-color: #ffebee;
-    border: 1px solid #f44336;
-    border-radius: 8px;
-    padding: 15px;
-}
 
 
 </style>

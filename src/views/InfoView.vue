@@ -13,12 +13,13 @@
           <span>视频教程</span>
         </a>
 
-        <a 
+        <button 
           class="promo-button secondary"
+          @click="showVerifyModal = true"
         >
-          <i class="material-icons">menu_book</i>
-          <span>使用文档</span>
-        </a>
+          <i class="material-icons">verified</i>
+          <span>PDF验证</span>
+        </button>
 
         <a 
           href="https://github.com/lanternx/MurisPro" 
@@ -51,14 +52,146 @@
         <p class="qr-tip">使用手机QQ扫描二维码</p>
       </div>
     </div>
+    <!-- PDF验证弹窗 -->
+    <div v-if="showVerifyModal" class="modal-overlay" @click="showVerifyModal = false">
+      <div class="verify-modal" @click.stop>
+        <button class="close-btn" @click="showVerifyModal = false">
+          <i class="material-icons">close</i>
+        </button>
+        <h3>PDF时间戳验证</h3>
+        <p style="color: #666; margin-bottom: 15px;">上传PDF文件，验证其时间戳签名是否有效</p>
+
+        <div class="file-upload-area" @click="triggerPdfUpload" @dragover.prevent @drop.prevent="onPdfDrop">
+          <input type="file" ref="pdfFileInput" accept=".pdf" @change="onPdfFileSelect" style="display: none">
+          <i class="material-icons" style="font-size: 48px; color: #999;">upload_file</i>
+          <p>点击选择或拖拽PDF文件到此处</p>
+          <p v-if="verifyFileName" style="color: #2196F3;">已选择: {{ verifyFileName }}</p>
+        </div>
+        <div style="margin-top: 15px;">
+          <button class="btn btn-primary" @click="verifyPdf" :disabled="!verifyFileData || isVerifying">
+            <i class="material-icons">verified</i>
+            {{ isVerifying ? '验证中...' : '开始验证' }}
+          </button>
+        </div>
+
+        <div v-if="verifyResult" style="margin-top: 15px;">
+          <div :class="verifyResult.valid ? 'verify-result-success' : 'verify-result-fail'">
+            <p style="font-size: 18px; font-weight: bold;">
+              {{ verifyResult.valid ? '✅ 验证通过' : '❌ 验证失败' }}
+            </p>
+            <table class="settings-table" style="margin-top: 10px;">
+              <tbody>
+                <tr>
+                  <td style="width: 150px; font-weight: bold;">审计链匹配</td>
+                  <td>{{ verifyResult.chainMatch ? '✅ 是' : '❌ 否' }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: bold;">DB哈希匹配</td>
+                  <td>{{ verifyResult.hashMatch ? '✅ 是' : '❌ 否' }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: bold;">签名验证</td>
+                  <td>{{ verifyResult.signatureValid ? '✅ 是' : '❌ 否' }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: bold;">认证时间</td>
+                  <td>{{ verifyResult.time || '无' }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: bold;">数据库名</td>
+                  <td>{{ verifyResult.db_name || '无' }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: bold;">认证时DB哈希</td>
+                  <td style="font-size: 12px; word-break: break-all;">{{ verifyResult.cert_db_hash || '无' }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: bold;">审计链</td>
+                  <td style="font-size: 12px; word-break: break-all;">{{ verifyResult.cert_record || '无' }}</td>
+                </tr>
+                <tr v-if="verifyResult.error">
+                  <td style="font-weight: bold;">错误信息</td>
+                  <td style="color: red;">{{ verifyResult.error }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import axios from 'axios'
+import { toast } from 'vue3-toastify'
+import 'vue3-toastify/dist/index.css'
 
 // 控制二维码弹窗显示
 const showQrModal = ref(false)
+
+// PDF验证相关状态
+const showVerifyModal = ref(false)
+const pdfFileInput = ref(null)
+const verifyFileName = ref('')
+const verifyFileData = ref(null)
+const isVerifying = ref(false)
+const verifyResult = ref(null)
+
+function triggerPdfUpload() {
+    pdfFileInput.value.click()
+}
+
+function onPdfFileSelect(event) {
+    const file = event.target.files[0]
+    if (file) loadPdfFile(file)
+}
+
+function onPdfDrop(event) {
+    const file = event.dataTransfer.files[0]
+    if (file && file.type === 'application/pdf') loadPdfFile(file)
+}
+
+function loadPdfFile(file) {
+    verifyFileName.value = file.name
+    verifyResult.value = null
+    const reader = new FileReader()
+    reader.onload = (e) => {
+        verifyFileData.value = new Uint8Array(e.target.result)
+    }
+    reader.readAsArrayBuffer(file)
+}
+
+async function verifyPdf() {
+    if (!verifyFileData.value) {
+        toast.warning('请先选择PDF文件')
+        return
+    }
+    
+    isVerifying.value = true
+    verifyResult.value = null
+    
+    try {
+        const response = await axios.post('/api/verify-pdf', verifyFileData.value, {
+            headers: { 'Content-Type': 'application/pdf' }
+        })
+        verifyResult.value = response.data
+        
+        if (response.data.valid) {
+            toast.success('PDF验证通过')
+        } else {
+            toast.error('PDF验证失败')
+        }
+    } catch (error) {
+        console.error('PDF验证错误:', error)
+        const msg = error.response?.data?.error || error.message
+        verifyResult.value = { valid: false, hashMatch: false, chainMatch: false, error: msg }
+        toast.error('PDF验证出错: ' + msg)
+    } finally {
+        isVerifying.value = false
+    }
+}
 </script>
 
 <style scoped>
@@ -126,7 +259,7 @@ const showQrModal = ref(false)
 .promo-button.accent i { color: #9C27B0; }
 .promo-button.qr-button i { color: #4CAF50; }
 
-/* 二维码弹窗样式 */
+/* 弹窗遮罩 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -141,6 +274,7 @@ const showQrModal = ref(false)
   backdrop-filter: blur(5px);
 }
 
+/* 二维码弹窗 */
 .qr-modal {
   background: white;
   border-radius: 20px;
@@ -148,6 +282,20 @@ const showQrModal = ref(false)
   text-align: center;
   position: relative;
   max-height: 700px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalAppear 0.3s ease-out;
+}
+
+/* PDF验证弹窗 */
+.verify-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  position: relative;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: modalAppear 0.3s ease-out;
 }
@@ -198,6 +346,67 @@ const showQrModal = ref(false)
   color: #666;
   font-size: 0.9rem;
   margin: 0;
+}
+
+/* PDF验证样式 */
+.file-upload-area {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+.file-upload-area:hover {
+  border-color: #2196F3;
+  background-color: #f0f7ff;
+}
+
+.verify-result-success {
+  background-color: #e8f5e9;
+  border: 1px solid #4caf50;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.verify-result-fail {
+  background-color: #ffebee;
+  border: 1px solid #f44336;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.settings-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-primary:hover {
+  background: #1976D2;
+}
+
+.btn-primary:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 @media (max-width: 767px) {
