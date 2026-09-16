@@ -37,8 +37,9 @@ def build_app(disable_console=False, app_name="MyApp"):
         'flask.json',
         'flask.wrappers',
         'werkzeug.wrappers',
-        'werkzeug.wsgi',
-        'webview'
+        'webview',
+        'ecdsa',
+        'pypdf'
     ]
 
     # Nuitka 打包配置 (macOS 专用)

@@ -1423,7 +1423,7 @@
         <!-- 重置设置 -->
         <div class="reset-section">
             <h4>重置设置</h4>
-            <p>这将重置所有显示设置为默认值，此操作不可撤销。</p>
+            <p>这将重置所有显示设置为默认值。</p>
             <button class="btn btn-danger" @click="confirmReset">
                 <i class="material-icons">warning</i> 重置所有设置
             </button>
@@ -2314,7 +2314,7 @@ const handleDbImportComplete = async () => {
 const exportDatabase = async (key) => {
     const db = databases.value[key]
     if (!db) return
-
+    if (db === currentDatabase.value) key = 'mice.db'
     try {
         const response = await axios.get(`/api/database/export/${key}`, {
             responseType: 'blob'
@@ -2393,7 +2393,7 @@ const clearDatabase = async () => {
         return
     }
     
-    if (!confirm('最后确认：这将永久删除所有数据，此操作不可逆！确定要继续吗？')) {
+    if (!confirm('最后确认：这将永久删除所有数据，此操作不可逆，重启后数据消失！确定要继续吗？')) {
         return
     }
     
@@ -2404,10 +2404,6 @@ const clearDatabase = async () => {
         const response = await axios.post('/api/database/clear')
         toast.success('数据库清空成功')
         deleteConfirmation.value = ''
-        
-        // 刷新数据库列表
-        await fetchDbInfo()
-        
     } catch (error) {
         console.error('清空数据库失败:', error)
         const errorMsg = error.response?.data?.error || '清空数据库失败'
@@ -2782,7 +2778,7 @@ const saveDisplaySettings = () => {
 
 // 确认重置
 const confirmReset = () => {
-    if (confirm('确定要重置所有显示设置吗？此操作不可撤销。')) {
+    if (confirm('确定要重置所有显示设置吗？')) {
         Object.keys(settings.value).forEach(s => {
             resetToDefault(s)
             changeSettings(s)

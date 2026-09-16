@@ -19,6 +19,7 @@ export const useSettingStore = defineStore('setting', () => {
     }
 
     const showColumns = ref({
+        tid: false,
         id: true,
         genotype: true,
         strain: true,
@@ -35,6 +36,7 @@ export const useSettingStore = defineStore('setting', () => {
     })
 
     const mouseColumns = [
+        { key: 'tid', label: '内部ID'},
         { key: 'id', label: '小鼠ID'},
         { key: 'genotype', label: '基因型'},
         { key: 'strain', label: '品系'},
@@ -55,6 +57,7 @@ export const useSettingStore = defineStore('setting', () => {
     const resetToDefault = (setting) => {
         if (setting === 'mouse') {
             showColumns.value = {
+                tid: false,
                 id: true,
                 genotype: true,
                 strain: true,

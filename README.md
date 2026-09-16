@@ -94,7 +94,7 @@ venv\Scripts\activate.bat
 pip install -r requirements.txt
 ```
 
-注意：以后每次运行都需要激活虚拟环境，也即在命令行执行 `venv\Scripts\activate.bat`。
+注意：以后每次运行都需要激活虚拟环境，即在命令行执行 `venv\Scripts\activate.bat`。
 
 4. 利用 npm 安装前端：
 
@@ -113,9 +113,8 @@ npm run serve
 
 ```bash
 cd backend
-python app.py
+python main.py
 ```
-然后可在浏览器中打开本项目（localhost:8080）
 
 8. 打包为可执行文件：
 
@@ -178,17 +177,15 @@ npm run serve
 
 ```bash
 cd backend
-python3 app.py
+python3 main.py
 ```
-
-在 `localhost:8080` 上直接访问
 
 打包为可执行文件(打包不要使用mac自带的python)：
 
 ```bash
 npm run build
 mv -i dist ../backend/
-python3 build_mac.py --disable-console --app-name "MurisPro_V3.1"
+python3 build_mac.py --disable-console --app-name "MurisPro_V3.2.3"
 ```
 
 
@@ -309,22 +306,15 @@ MurisPro 提供完整的数据审计链（Audit Trail）和 PDF 防篡改机制�
   - **Material Design Icons** - 提供美观的图标资源
   - **Chart.js & D3.js** - 强大的数据可视化能力
   - **SQLAlchemy** - ORM数据库管理解决方案
+  - **pypdf** - 开源pdf处理工具
 - 感谢所有贡献者和用户
 
 ## 支持
 
 如果您遇到问题或有疑问，请通过以下方式联系我们：
 - 提交GitHub Issue
-- 发送邮件至项目维护团队
+- 进入QQ群提问
 - 社交平台评论或者私信
-
-## 版本历史
-
-- 2.1 - 增加小鼠实验模块，更换打包方式
-- 1.2 - 修复了部分bug，提高程序稳健性
-- 1.1.1 - 解决端口占用问题，增加了程序的稳健性
-- 1.1 - 改进版本发布
-- 1.0 - 初始版本发布
 
 ---
 

@@ -173,7 +173,7 @@
           </div>
       </div>
       <div class="version-info">
-          版本号: 3.2.2 | 2026-9-13
+          版本号: 3.3 | 2026-9-18
       </div>
   </footer>
       </div>

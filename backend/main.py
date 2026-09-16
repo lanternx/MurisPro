@@ -186,7 +186,7 @@ def create_save_file_dialog(window):
             try:
                 if filename.endswith('.xlsx'):
                     file_types = ("Excel files (*.xlsx)", "All files (*.*)")
-                elif filename.endswith('.xlsx'):
+                elif filename.endswith('.csv'):
                     file_types = ("CSV files (*.csv)", "All files (*.*)")
                 else:
                     file_types = ("All files (*.*)",)

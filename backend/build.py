@@ -40,8 +40,9 @@ def build_app():
         'flask.json',
         'flask.wrappers',
         'werkzeug.wrappers',
-        'werkzeug.wsgi',
-        'webview'
+        'webview',
+        'ecdsa',
+        'pypdf'
     ]
 
     for imp in hidden_imports:

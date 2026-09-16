@@ -70,14 +70,24 @@ CORS(app)
 
 def restart_app():
     """重启应用程序"""
-    subprocess.Popen([sys.executable] + sys.argv)
+    if '__compiled__' in globals():
+        import webview
+        if webview.windows:
+            window = webview.windows[0]
+            window.confirm_close = False
+            window.destroy()
+        # Nuitka 打包环境：直接重启 exe，不传参数
+        subprocess.Popen([sys.argv[0]])
+    else:
+        # 开发环境：用 python 重新运行脚本
+        subprocess.Popen([sys.executable] + sys.argv)
     os._exit(0)
 
 
 def get_base_dir():
     """获取应用程序的基础目录"""
-    if getattr(sys, 'frozen', False):
-        return Path(sys.executable).parent
+    if '__compiled__' in globals():
+        return Path(sys.argv[0]).resolve().parent
     else:
         return Path(__file__).parent
 
@@ -1795,7 +1805,7 @@ def import_weights_data(df, result, conflict_resolution):
                 db.session.add(weight_record)
             db.session.commit()
             result['successCount'] += 1
-            
+        
         except Exception as e:
             db.session.rollback()
             logger.error(f"导入体重失败: {str(e)}")
@@ -1803,6 +1813,7 @@ def import_weights_data(df, result, conflict_resolution):
                 'row': index + 2,
                 'message': f'导入失败: {str(e)}'
             })
+        db.session.commit()
 
 def import_record_data(df, result, conflict_resolution):
     """导入记录数据"""
@@ -1863,6 +1874,7 @@ def import_record_data(df, result, conflict_resolution):
                 'row': index + 2,
                 'message': f'导入失败: {str(e)}'
             })
+        db.session.commit()
 
 def import_pedigree_data(df, result, conflict_resolution):
     """导入血统关系数据，逻辑存在明显漏洞！"""
@@ -2584,7 +2596,7 @@ def get_experiment_data_by_type(experiment_ids):
         # 准备数据容器
         data_rows = []
         candidate_mice = [ex.mouse_id for ex in ExperimentClass.query.filter_by(experiment_id=experiment_id).all()]
-        groups = PredefinedGroup.query.filter_by(experiment_id=experiment_id).first().rules
+        groups = PredefinedGroup.query.filter_by(experiment_id=experiment_id).first().rules if PredefinedGroup.query.filter_by(experiment_id=experiment_id).first() else []
         mouse_to_group = {}
         for g in groups:
             for m in g['mouseId']:
@@ -2797,7 +2809,7 @@ def clear_database():
         }
         
         logger.info(f"数据库清空操作: {log_entry}")
-
+        restart_app()
         return jsonify({
             'success': True,
             'message': '数据库清空成功',
@@ -3109,11 +3121,6 @@ def import_database():
             os.rename(str(new_db_path), str(mice_path))
 
         restart_app()
-
-        return jsonify({
-            'success': True,
-            'message': '数据库导入成功'
-        })
     except Exception as e:
         logging.error(f"导入数据库失败: {str(e)}")
         return jsonify({'error': '导入数据库失败', 'details': str(e)}), 500

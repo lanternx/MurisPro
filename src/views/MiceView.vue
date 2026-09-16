@@ -68,9 +68,13 @@
       </div>
       
       <!-- 小鼠列表表格 -->
+      <div class="table-wrapper">
       <table class="mouse-table">
         <thead>
           <tr>
+            <th v-if="showColumns.tid">
+              内部ID
+            </th>
             <th v-if="showColumns.id" @click="sortBy('id')">
               小鼠ID <i :class="sortIcon('id')">keyboard_arrow_down</i>
             </th>
@@ -109,6 +113,7 @@
             </th>
           </tr>
           <tr class="filter-row">
+            <th v-if="showColumns.tid" style="color:gray">仅供参考</th>
             <th v-if="showColumns.id"><input v-model="filters.id" @input="applyFilters" placeholder="筛选ID"></th>
             <th v-if="showColumns.genotype">
               <!-- 基因型筛选 -->
@@ -189,6 +194,7 @@
               'selected': isSelected(mouse.tid),
               'selected-multiple': selectedMice.length > 1 && isSelected(mouse.tid)
           }">
+            <td v-if="showColumns.tid" style="color:grey">{{ mouse.tid }}</td>
             <td v-if="showColumns.id">{{ mouse.id }}</td>
             <td v-if="showColumns.genotype" v-html="mouse.genotype.symbol"></td>
             <td v-if="showColumns.strain">{{ mouse.strain }}</td>
@@ -221,6 +227,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
       
       <!-- 右键上下文菜单 -->
       <div v-if="contextMenu.visible" 
