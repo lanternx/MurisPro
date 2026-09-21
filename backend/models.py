@@ -7,7 +7,7 @@ db = SQLAlchemy()
 class Mouse(db.Model):
     __tablename__ = 'mouse'
 
-    tid = db.Column(db.Integer, primary_key=True)
+    tid = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id = db.Column(db.String(10), nullable=False)
     sex = db.Column(db.String(1))  # 'M' or 'F'
     live_status = db.Column(db.Integer, default=1)  # 1 for '活', 0 for '死', 2 for '解剖', 3 for '意外消失', 4 for '丢弃'
@@ -69,7 +69,7 @@ class Mouse(db.Model):
 class Pedigree(db.Model):
     __tablename__ = 'pedigree'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     mouse_id = db.Column(db.Integer, db.ForeignKey('mouse.tid', ondelete='CASCADE'))
     parent_id = db.Column(db.Integer, db.ForeignKey('mouse.tid', ondelete='CASCADE'))
     parent_type = db.Column(db.String(10))  # 'father' or 'mother'
@@ -81,7 +81,7 @@ class Pedigree(db.Model):
 class Cage(db.Model):
     __tablename__ = 'cage'
     
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     section = db.Column(db.String(50), db.ForeignKey('location.identifier'), nullable=False)
     cage_id = db.Column(db.String(10), nullable=False) #这个就是笼位卡上显示的编号
     location = db.Column(db.String(50))
@@ -324,7 +324,7 @@ class ExperimentValue(db.Model):
     __tablename__ = 'experiment_value'
     
     id = db.Column(db.Integer, primary_key=True)
-    experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id'), nullable=False)
+    experiment_id = db.Column(db.Integer, db.ForeignKey('experiment.id', ondelete='CASCADE'), nullable=False)
     field_definition_id = db.Column(db.Integer, db.ForeignKey('field_definition.id'), nullable=False)
     
     # 根据不同数据类型存储的值

@@ -600,10 +600,10 @@
         </div>
         
         <div class="form-section">
-        <h3>{{ editingExperimentType.id ? '编辑实验类型' : '新增实验类型' }}</h3>
+        <h3>{{ editingExperimentType.id ? '编辑实验' : '新增实验' }}</h3>
         <form @submit.prevent="saveExperimentType" class="form-group-row">
             <div class="form-group">
-            <label>实验类型名称 *</label>
+            <label>实验名称 *</label>
             <input type="text" v-model="editingExperimentType.name" placeholder="例如: 肿瘤测量" required>
             </div>
             
@@ -700,12 +700,12 @@
         </div>
         
         <div class="form-section">
-        <h3>实验类型列表</h3>
+        <h3>实验列表</h3>
         <div class="table-container">
             <table class="settings-table">
             <thead>
                 <tr>
-                <th>实验类型名称</th>
+                <th>实验名称</th>
                 <th>描述</th>
                 <th>字段数量</th>
                 <th>是否展示</th>
@@ -798,7 +798,7 @@
                     <div class="group-type-selector">
                         <select v-model="editingGroup.experiment_id" @change="changeGroupExperiment(editingGroup.experiment_id)" :disabled="editingGroup.id">
                             <option :value=null>不为实验预设分组</option>
-                            <option v-for="experiment in experiments" :value="experiment.id" :key="experiment.id" >
+                            <option v-for="experiment in ungroupedExperiments" :value="experiment.id" :key="experiment.id" >
                             {{ experiment.name }}
                             </option>
                         </select>
@@ -1601,7 +1601,7 @@ const { loadGenotypes, colors, onFormLocusChange, onFormAlleleChange, deleteGene
 const {locations, section_key} = storeToRefs(cageStore)
 const {calculateCages, fetchCages} = cageStore
 
-const {experiments, experimentPresets, predefinedGroups} = storeToRefs(experimentStore)
+const {experiments, experimentPresets, predefinedGroups, ungroupedExperiments} = storeToRefs(experimentStore)
 const {fetchExperiments, fetchPredefinedGroups} = experimentStore
 
 const {showColumns, selectedSetting, settings} = storeToRefs(settingStore)
@@ -2135,12 +2135,13 @@ editingExperimentType.fields = []
 }
 
 const deleteExperimentType = async (id) => {
-    if (!confirm('确定要删除这个实验类型吗？')) return
+    if (!confirm('确定要删除这个实验类型吗？相关的分组和实验数据均会被删除！')) return
 
     try {
         await axios.delete(`/api/experiment-types/${id}`)
         toast.success('删除成功')
         await fetchExperiments()
+        predefinedGroups.value = predefinedGroups.value.filter(group => group.experiment_id !== id)
     } catch (error) {
         console.error('删除实验类型失败:', error)
         toast.error(error.response?.data?.error || '删除实验类型失败')
@@ -2730,7 +2731,7 @@ const cancelEditGroup = () => {
 }
 
 const deleteGroup = async (id) => {
-    if (!confirm('确定要删除这个分组吗？')) return
+    if (!confirm('确定要删除这个分组吗？若是实验相关分组，将会删除分组中所有实验记录！')) return
 
     try {
         await axios.delete(`/api/groups/predefined/${id}`)

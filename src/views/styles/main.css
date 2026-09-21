@@ -339,6 +339,8 @@ footer {
     align-items: center;
     font-size: 14px;
     transition: all 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .btn-icon {

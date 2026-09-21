@@ -62,7 +62,7 @@
               </div>
             </div>
           <button @click="batchAddExperiment('计划实验')">批量计划实验</button>
-          <button @click="batchAddExperiment('完成实验')">批量完成实验</button>
+          <button @click="batchAddExperiment('进行实验')">批量进行实验</button>
           <button @click="batchDeleteMice" style="background-color: #FA8072;">批量删除小鼠</button>
           <button @click="clearSelection" style="background-color: #95a5a6;">取消选择</button>
       </div>
@@ -109,7 +109,7 @@
               计划实验 <i :class="sortIcon('tests_planned')">keyboard_arrow_down</i>
             </th>
             <th v-if="showColumns.tests_done" @click="sortBy('tests_done')">
-              完成实验 <i :class="sortIcon('tests_done')">keyboard_arrow_down</i>
+              进行实验 <i :class="sortIcon('tests_done')">keyboard_arrow_down</i>
             </th>
           </tr>
           <tr class="filter-row">
@@ -432,9 +432,9 @@
             <p class="info-text" v-else>未选择母本</p>
           </div>
 
-        <!-- 已完成测试 -->
+        <!-- 已进行测试 -->
         <div class="form-group"  v-if="modalMode === 'edit'">
-          <label>已完成测试:</label>
+          <label>进行实验:</label>
           <div class="tags-input-container">
             <!-- 下拉选择框 -->
             <div class="custom-select" :class="{ 'is-open': showTestsDoneDropdown }">
@@ -447,7 +447,7 @@
                     <span class="tag-remove" @click="removeTest('done', index)">×</span>
                   </span>
                 </div>
-                <span class="placeholder" v-if="selectedTestsDone.length === 0">选择已完成测试...</span>
+                <span class="placeholder" v-if="selectedTestsDone.length === 0">选择当前进行的实验...</span>
                 </div>
                 <div class="select-arrow">▼</div>
               </div>
@@ -472,7 +472,7 @@
         
         <!-- 计划进行测试 -->
         <div class="form-group">
-          <label>计划进行测试:</label>
+          <label>计划实验:</label>
           <div class="tags-input-container">
             <!-- 下拉选择框 -->
             <div class="custom-select" :class="{ 'is-open': showTestsPlanDropdown }">
@@ -609,7 +609,7 @@
               <span class="detail-value" v-for="mother in selectedMothers" :key="mother.tid">{{ mother.id }} </span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">已完成测试</span>
+              <span class="detail-label">进行测试</span>
               <span class="detail-value" v-for="(test_done) in templateMouse.tests_done" :key="tests_done">{{ experiments.find(e => e.id === test_done).name }} </span>
             </div>
             <div class="detail-item">
@@ -786,7 +786,7 @@ const cageQuery = ref('')
 const showCageSuggestions = ref(false)
 const cageSuggestions = ref([])
 
-// 计算可用的测试（过滤掉已选的计划测试和已完成测试）
+// 计算可用的测试（过滤掉已选的计划测试和已进行测试）
 const availableTestsPlan = computed(() => {
   return experiments.value.filter(exp => 
     !selectedTestsPlanned.value.some(selected => selected.id === exp.id) &&
@@ -794,7 +794,7 @@ const availableTestsPlan = computed(() => {
   )
 })
 
-// 计算可用的完成测试（过滤掉已选的）
+// 计算可用的进行测试（过滤掉已选的）
 const availableTestsDone = computed(() => {
   return selectedTestsPlanned.value.filter(exp => 
     !selectedTestsDone.value.some(selected => selected.id === exp.id)
@@ -1515,7 +1515,7 @@ const selectTest = (type, experiment) => {
 
 // 监听selectedTestsDone的变化，确保与selectedTestsPlanned互斥
 watch(selectedTestsDone, (newTestsDone) => {
-  // 从计划测试中移除所有已完成的测试
+  // 从计划测试中移除所有已进行的测试
   selectedTestsPlanned.value = selectedTestsPlanned.value.filter(
     plannedTest => !newTestsDone.some(doneTest => doneTest.id === plannedTest.id)
   )

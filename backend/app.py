@@ -12,6 +12,7 @@ import pandas as pd
 from io import BytesIO
 from sqlalchemy import text, inspect, or_, and_
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.attributes import flag_modified
 import re
 import subprocess
 import sqlite3
@@ -477,13 +478,15 @@ def update_mouse(mouse_tid):
             tests_done = set(data.get('tests_done'))
             experiments = set([t.experiment_id for t in mouse.tests_done])
             if tests_done != experiments:
-                ExperimentClass.query.filter_by(mouse_id=mouse.tid).delete()
-                for t in tests_done:
-                    exp = ExperimentClass(
-                        mouse_id=mouse.tid,
-                        experiment_id=t
-                    )
-                    db.session.add(exp)
+                for ex in tests_done.union(experiments):
+                    if ex in tests_done and ex not in experiments:
+                        exp = ExperimentClass(
+                            mouse_id=mouse.tid,
+                            experiment_id=ex
+                        )
+                        db.session.add(exp)
+                    elif ex not in tests_done and ex in experiments:
+                        delete_experiment_related_mouse(mouse.tid, ex)
         if 'tests_planned' in data:
             mouse.tests_planned = data.get('tests_planned')
         if 'cage_id' in data:
@@ -525,7 +528,7 @@ def delete_mouse(mouse_tid):
         Pedigree.query.filter_by(mouse_id=mouse_tid).delete()
         Pedigree.query.filter_by(parent_id=mouse_tid).delete()
         WeightRecord.query.filter_by(mouse_id=mouse_tid).delete()
-        ExperimentClass.query.filter_by(mouse_id=mouse_tid).delete()
+        delete_experiment_related_mouse(mouse_tid)
         old_hash = compute_db_hash()
         db.session.delete(mouse)
         db.session.commit()
@@ -535,6 +538,45 @@ def delete_mouse(mouse_tid):
         db.session.rollback()
         logger.error(f"删除小鼠失败: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+def delete_experiment_related_mouse(tid, experiment_id = None):
+    """删除与实验相关的小鼠记录"""
+    try:
+        Mouse.query.get_or_404(tid)
+        if experiment_id:
+            ExperimentClass.query.filter_by(mouse_id=tid, experiment_id=experiment_id).delete()
+            Experiment.query.filter_by(mouse_id=tid, experiment_type_id=experiment_id).delete()
+            g = PredefinedGroup.query.filter_by(experiment_id=experiment_id).first()
+            if g and g.Gtype == 'id':
+                rules = g.rules or []
+                for r in rules:
+                    ids = r.get('mouseId', [])
+                    new_ids = [m for m in ids if m != tid]
+                    if len(new_ids) != len(ids):
+                        r['mouseId'] = new_ids
+                        changed = True
+                if changed:
+                    g.rules = rules                     # 整体赋值
+                    flag_modified(g, 'rules')           # 强制标脏，确保发 UPDATE
+        else:
+            ExperimentClass.query.filter_by(mouse_id=tid).delete()
+            Experiment.query.filter_by(mouse_id=tid).delete()
+            for g in PredefinedGroup.query.all():
+                if g.Gtype == 'id':
+                    rules = g.rules or []
+                    for r in rules:
+                        ids = r.get('mouseId', [])
+                        new_ids = [m for m in ids if m != tid]
+                        if len(new_ids) != len(ids):
+                            r['mouseId'] = new_ids
+                            changed = True
+                    if changed:
+                        g.rules = rules                     # 整体赋值
+                        flag_modified(g, 'rules')           # 强制标脏，确保发 UPDATE
+        return True
+    except Exception as e:
+        logger.error(f"删除实验相关小鼠记录失败: {str(e)}")
+        return False
 
 @app.route('/api/mice', methods=['DELETE'])
 def delete_batch_mice():
@@ -550,7 +592,7 @@ def delete_batch_mice():
             Pedigree.query.filter_by(mouse_id=mouse_tid).delete()
             Pedigree.query.filter_by(parent_id=mouse_tid).delete()
             WeightRecord.query.filter_by(mouse_id=mouse_tid).delete()
-            ExperimentClass.query.filter_by(mouse_id=mouse_tid).delete()
+            delete_experiment_related_mouse(mouse_tid)
             db.session.delete(mouse)
         db.session.commit()
         log_audit(f'DELETE FROM mouse WHERE tid IN {tuple(mice_ids)}', old_hash)
@@ -568,10 +610,11 @@ def add_mice_from_template(mouse_tid):
         template_mouse = Mouse.query.get_or_404(mouse_tid)
         template_mouse_parent = Pedigree.query.filter_by(mouse_id=mouse_tid).all()
         genes = Genotype.query.filter_by(mouse_id=mouse_tid).all()
+        mice = []
         for m in data:
             new_mouse_data = template_mouse.to_dict()
             # 移除不需要继承的字段（如主键、创建时间等）
-            excluded_fields = ['id', 'tid', 'sex', 'genotype']
+            excluded_fields = ['id', 'tid', 'sex', 'genotype', 'tests_done']
             for field in excluded_fields:
                 new_mouse_data.pop(field, None)
             new_mouse_data['death_date'] = date.fromisoformat(new_mouse_data['death_date']) if new_mouse_data['death_date'] else None
@@ -581,6 +624,7 @@ def add_mice_from_template(mouse_tid):
             new_mouse = Mouse(**new_mouse_data)
             db.session.add(new_mouse)
             db.session.flush()
+            mice.append(new_mouse)
             for g in genes:
                 new_gene = Genotype(
                     mouse_id=new_mouse.tid,
@@ -595,9 +639,15 @@ def add_mice_from_template(mouse_tid):
                     parent_id=p.parent_id,
                     parent_type=p.parent_type)
                 db.session.add(new_parent)
+            for g in template_mouse.tests_done:
+                new_experiment = ExperimentClass(
+                    mouse_id=new_mouse.tid,
+                    experiment_id=g.experiment_id
+                )
+                db.session.add(new_experiment)
         old_hash = compute_db_hash()
         db.session.commit()
-        log_audit(f'INSERT INTO mouse (tids={[m["id"] for m in data]})', old_hash)
+        log_audit(f'INSERT INTO mouse (tids={[m.tid for m in mice]})', old_hash)
         return jsonify(), 201
     except Exception as e:
         db.session.rollback()
@@ -612,24 +662,24 @@ def batch_experiments_change():
         mice_ids = data.get("miceIds", [])
         test_ids = data.get("testIds", [])
         operation = data.get("batchTest", "")
-        if operation == "完成实验":
+        if operation == "进行实验":
             for mtid in mice_ids:
-                m = Mouse.query.get_or_404(mtid)
-                if not m:
-                    continue
-                if m.tests_done:
-                    m.tests_done.delete()
-                for test_id in test_ids:
-                    enter_experiment = ExperimentClass(
-                        mouse_id = m.tid,
-                        experiment_id = test_id
-                    )
-                    db.session.add(enter_experiment)
+                mouse = Mouse.query.get_or_404(mtid)
+                tests_done = set(test_ids)
+                experiments = set([t.experiment_id for t in mouse.tests_done])
+                if tests_done != experiments:
+                    for ex in tests_done.union(experiments):
+                        if ex in tests_done and ex not in experiments:
+                            exp = ExperimentClass(
+                                mouse_id=mouse.tid,
+                                experiment_id=ex
+                            )
+                            db.session.add(exp)
+                        elif ex not in tests_done and ex in experiments:
+                            delete_experiment_related_mouse(mouse.tid, ex)
         elif operation == "计划实验":
             for mtid in mice_ids:
                 m = Mouse.query.get_or_404(mtid)
-                if not m:
-                    continue
                 m.tests_planned = test_ids
         old_hash = compute_db_hash()
         db.session.commit()
@@ -2239,18 +2289,21 @@ def update_experiment_type(id):
 
 @app.route('/api/experiment-types/<int:id>', methods=['DELETE'])
 def delete_experiment_type(id):
+    experiment_type = ExperimentType.query.get_or_404(id)
     try:
-        experiment_type = ExperimentType.query.get_or_404(id)
-        
-        # 检查是否有实验记录使用此类型
-        experiment_count = Experiment.query.filter_by(experiment_type_id=id).count()
-        if experiment_count > 0:
-            return jsonify({'error': '无法删除：已有实验记录使用此类型'}), 400
-        
+        # 删除对应实验记录
+        for ex in Experiment.query.filter_by(experiment_type_id=id).all():
+            ExperimentValue.query.filter_by(experiment_id=ex.id).delete()
+            Experiment.query.filter_by(id=ex.id).delete()
+        # 删除对应预设分组
+        PredefinedGroup.query.filter_by(experiment_id=id).delete()
         # 删除字段定义
         FieldDefinition.query.filter_by(experiment_type_id=id).delete()
-        
-        # 删除实验类型
+        # 删除小鼠对应计划实验
+        for m in Mouse.query.filter(Mouse.tests_planned.any(id)).all():
+            m.tests_planned.remove(id)
+        ExperimentClass.query.filter_by(experiment_id=id).delete()
+
         old_hash = compute_db_hash()
         db.session.delete(experiment_type)
         db.session.commit()
@@ -3392,8 +3445,17 @@ def modify_predefined_groups(gIndex):
         new_rule.name = group_name
         new_rule.description = group_description
         new_rule.Gtype = group_type
-        new_rule.rules = rules
         new_rule.experiment_id = experiment_id
+        if experiment_id and group_type == 'id':
+            old_mouse_set = set(x for nr in new_rule.rules for x in nr.get('mouseId', []))
+            new_mouse_set = set(x for r in rules for x in r.get('mouseId', []))
+            for m in old_mouse_set.union(new_mouse_set):
+                if m not in new_mouse_set:
+                    # 删除不在新规则中的小鼠实验记录
+                    for ex in Experiment.query.filter_by(mouse_id=m, experiment_type_id=experiment_id).all():
+                        ExperimentValue.query.filter_by(experiment_id=ex.id).delete()
+                        db.session.delete(ex)
+        new_rule.rules = rules
         old_hash = compute_db_hash()
         db.session.commit()
         log_audit(f'UPDATE PredefinedGroup SET id={gIndex}', old_hash)
@@ -3475,6 +3537,10 @@ def get_predefined_groups():
 def delete_predefined_groups(g_id):
     try:
         pre_group = PredefinedGroup.query.get_or_404(g_id)
+        if pre_group.experiment_id and pre_group.Gtype == 'id':
+            for ex in Experiment.query.filter_by(experiment_type_id=pre_group.experiment_id).all():
+                ExperimentValue.query.filter_by(experiment_id=ex.id).delete()
+                db.session.delete(ex)
         old_hash = compute_db_hash()
         db.session.delete(pre_group)
         db.session.commit()

@@ -25,7 +25,10 @@ export const useExperimentStore = defineStore('experiment', () => {
         return experiments.value.filter(expr => expr.is_show)
     })
     const experimentPresets = ref({})
-    
+    const ungroupedExperiments = computed(() => {
+        return experiments.value.filter(experiment => !predefinedGroups.value.some(group => group.experiment_id === experiment.id))
+    })
+
     // 实验类型相关方法
     const fetchExperiments = async () => {
         try {
@@ -70,6 +73,7 @@ export const useExperimentStore = defineStore('experiment', () => {
         experimentPresets,
         selectedPredefinedGroupId,
         predefinedGroups,
+        ungroupedExperiments,
         showChartType,
 
         fetchExperiments,

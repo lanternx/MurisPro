@@ -435,7 +435,7 @@ try {
 }
 }
 
-const handleGroupUpdate = (updatedGroup) => {
+const handleGroupUpdate = async (updatedGroup) => {
     Object.assign(allGroups, updatedGroup)
 }
 
@@ -445,6 +445,7 @@ const saveGroup = async () => {
         toast.success('预设ID分组保存成功')
         fetchPredefinedGroups()
         showGroupModal.value = false
+        await init()
     } catch (error) {
         console.error('保存分组失败:', error)
         toast.error(error.response?.data?.error || '保存分组失败')

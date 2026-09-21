@@ -448,6 +448,8 @@ const resetGroup = () => {
   border-radius: 4px;
   background: white;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .group-item {
@@ -456,6 +458,8 @@ const resetGroup = () => {
   margin-bottom: 15px;
   background: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .group-header {
