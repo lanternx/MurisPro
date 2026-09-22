@@ -496,7 +496,7 @@ tabulatorInstance.value = new Tabulator(tabulatorRef.value, {
         sorter: "string" // 默认使用字符串排序
     })),
     layout: 'fitColumns',
-    height: '85vh',
+    height: '82vh',
     selectable: true,
     selectableRange: true,
     clipboard: "copy",
@@ -516,7 +516,7 @@ recordTabulatorInstance.value = new Tabulator(recordTabulatorRef.value, {
     data: recordRowData.value,
     columns: recordColumnDefs.value,
     layout: 'fitColumns',
-    height: '400px',
+    height: '320px',
     selectableRange:1,
     selectableRangeColumns:true,
     selectableRangeRows:true,
@@ -607,6 +607,17 @@ try {
     const response = await axios.get(`/api/experiment/${experimentId.value}/data`, {cancelToken: currentRequestToken.token});
     experimentData.value = response.data;
     hasData.value = experimentData.value.length > 0;
+    if (hasData.value) {
+        experimentData.value = experimentData.value.map(item => {
+            const newItem = {...item};
+            candidateMice.value.forEach(mouse => {
+                if (mouse.tid === item.__tid) {
+                    newItem.id = mouse.id
+                }
+            });
+            return newItem;
+        });
+    }
 } catch (error) {
     console.error('获取数据:', error);
     toast.error('获取数据: ' + error.message);
@@ -879,8 +890,8 @@ function createXYChart(canvas, xField, yField, groupedData) {
     
     // 计算y轴的范围，留出一些边距
     const padding = (globalMax - globalMin) * 0.1;
-    const yMin = globalMin - padding;
-    const yMax = globalMax + padding;
+    let yMin = globalMin - padding;
+    let yMax = globalMax + padding;
     const xPadding = (globalXMax - globalXMin) * 0.1;
     let xMin = globalXMin - xPadding;
     let xMax = globalXMax + xPadding;
@@ -889,6 +900,11 @@ function createXYChart(canvas, xField, yField, groupedData) {
         // 如果所有x值相同，设置一个默认范围
         xMin -= 1;
         xMax += 1;
+    }
+    if (yMin === yMax) {
+        // 如果所有y值相同，设置一个默认范围
+        yMin -= 1;
+        yMax += 1;
     }
 
     // 创建图表
@@ -1038,8 +1054,14 @@ function createBoxPlotWithPoints(canvas, columnField, groupedData) {
     
     // 计算y轴的范围，留出一些边距
     const padding = (globalMax - globalMin) * 0.1;
-    const yMin = globalMin - padding;
-    const yMax = globalMax + padding;
+    let yMin = globalMin - padding;
+    let yMax = globalMax + padding;
+
+    if (yMin === yMax) {
+        // 如果所有y值相同，设置一个默认范围
+        yMin -= 1;
+        yMax += 1;
+    }
     
     // 创建组合图表
     new Chart(ctx, {
@@ -1565,7 +1587,6 @@ overflow: auto;
 .table-controls {
 display: flex;
 justify-content: space-between;
-margin-bottom: 20px;
 gap: 15px;
 }
 

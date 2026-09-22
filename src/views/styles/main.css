@@ -330,6 +330,11 @@ footer {
 .warning { color: var(--warning); }
 
 /* ---------- 7. 公共按钮 ---------- */
+button {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .btn {
     padding: 8px 16px;
     border-radius: 4px;
@@ -339,8 +344,6 @@ footer {
     align-items: center;
     font-size: 14px;
     transition: all 0.2s;
-    -webkit-user-select: none;
-    user-select: none;
 }
 
 .btn-icon {
@@ -1432,6 +1435,11 @@ footer {
     border-color: #2c6fbb;
 }
 
+.checkbox-group input[type="checkbox"]:disabled + label {
+    cursor: not-allowed;
+    color: #aaa;
+}
+
 .checkbox-group input[type="checkbox"]:checked + label:before {
     background-color: #2c6fbb;
     border-color: #2c6fbb;
@@ -1445,6 +1453,10 @@ footer {
 .checkbox-group input[type="checkbox"]:focus + label:before {
     box-shadow: 0 0 0 3px rgba(44, 111, 187, 0.2);
     border-color: #2c6fbb;
+}
+
+.checkbox-group input[type="checkbox"]:disabled:focus + label:before {
+    box-shadow: none;                 /* 禁用时不显示焦点光圈 */
 }
 
 /* ---------- 23. 公共表单辅助元素 ---------- */

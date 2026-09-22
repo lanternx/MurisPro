@@ -2402,7 +2402,7 @@ def get_experiment_data(experiment_id):
             for g in mouse_to_group[mid]:
                 result = {
                     '__experimentId': expr.id,
-                    'id': mid,
+                    '__tid': mid,
                     'group': g[0],
                     'color': g[1],
                     'researcher': expr.researcher,
