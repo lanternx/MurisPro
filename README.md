@@ -6,7 +6,7 @@
 
 **专业的动物房管理系统**
 
-[![版本](https://img.shields.io/badge/版本-3.0.0-blue)]()
+[![版本](https://img.shields.io/badge/版本-3.3.1-blue)]()
 [![状态](https://img.shields.io/badge/状态-活跃-success)]()
 
 </div>
@@ -53,9 +53,9 @@
 
 ✅ 已提供打包好的桌面版，**无需安装任何依赖**，下载后直接运行：
 
-👉 [立即下载最新版本](https://github.com/lanternx/animal_lab/releases/tag/V3.3)
+👉 [立即下载最新版本](https://github.com/lanternx/animal_lab/releases/tag/V3.3.1)
 
-也可通过百度网盘下载（包括[Windows版](https://pan.baidu.com/s/1EdigrCiNEIBNGGCQSnV6qw?pwd=2333)和[Mac版](https://pan.baidu.com/s/1x4IIB-TzQbNMMgnmDWLquQ?pwd=2333)（仅限Arm64架构（M系列芯片））
+也可通过百度网盘下载（包括[Windows版](https://pan.baidu.com/s/1mdyzSVJMr98vUJgJQ2utrA?pwd=2333)和[Mac版](https://pan.baidu.com/s/1x4IIB-TzQbNMMgnmDWLquQ?pwd=2333)（仅限Arm64架构（M系列芯片））
 
 Mac版不能直接在Mac上用网盘下载，应该用windows或者安卓手机下载，然后通过U盘拷到Mac上，这样才能避免隔离！！！！否则会出现文件已损坏的错误！
 
